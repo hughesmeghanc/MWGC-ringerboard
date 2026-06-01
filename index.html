@@ -1,0 +1,614 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MWGC Ringerboard 2026</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.20.3/dist/xlsx.full.min.js"></script>
+<style>
+:root { --bg:#dff5df; --panel:rgba(233,248,233,.96); --line:rgba(34,94,34,.12); --text:#173217; --muted:#4b6b4b; }
+* { box-sizing:border-box; }
+body { margin:0; font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:radial-gradient(circle at top,#9fd69f 0%,#cdeccd 45%,#edf9ed 100%); color:var(--text); }
+.wrap { max-width:1600px; margin:0 auto; padding:24px; }
+.hero { display:flex; justify-content:space-between; gap:20px; align-items:flex-start; margin-bottom:18px; }
+.title { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.title h1 { margin:0; font-size:30px; letter-spacing:-.03em; }
+.pills { display:flex; flex-wrap:wrap; gap:8px; }
+.pill { border:1px solid var(--line); background:rgba(255,255,255,.45); border-radius:999px; padding:7px 12px; font-size:13px; color:var(--text); }
+.upload { min-width:320px; border:1px solid var(--line); border-radius:18px; padding:14px; background:rgba(255,255,255,.45); }
+.upload label { display:block; font-size:13px; margin-bottom:8px; color:var(--muted); }
+.admin-update { margin-top:18px; border:1px solid var(--line); border-radius:14px; background:rgba(255,255,255,.35); }
+.admin-update summary { cursor:pointer; padding:12px 14px; font-weight:700; color:var(--text); }
+.admin-update .upload { min-width:0; margin:0; border:0; border-top:1px solid var(--line); border-radius:0 0 14px 14px; background:rgba(255,255,255,.32); }
+.tabs { display:flex; gap:10px; margin:18px 0; flex-wrap:wrap; }
+.tabbtn { border:1px solid var(--line); background:rgba(255,255,255,.45); color:var(--text); padding:12px 16px; border-radius:14px; font-weight:700; cursor:pointer; transition:background .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease; }
+.tabbtn.active { background:linear-gradient(135deg,rgba(34,197,94,.34),rgba(56,189,248,.26)); border-color:rgba(22,101,52,.55); box-shadow:0 8px 20px rgba(22,101,52,.22), inset 0 0 0 2px rgba(255,255,255,.7); transform:translateY(-1px); }
+.tabbtn.active::before { content:"✓ "; font-weight:900; }
+.panel { display:none; border:1px solid var(--line); border-radius:24px; padding:18px; background:var(--panel); box-shadow:0 14px 35px rgba(0,0,0,.15); }
+.panel.active { display:block; }
+.controls { display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px; margin-bottom:14px; }
+.controls .left, .controls .right { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+.input, select { min-width:220px; border:1px solid var(--line); background:rgba(255,255,255,.82); color:var(--text); border-radius:12px; padding:10px 12px; font-size:16px; -webkit-text-size-adjust:100%; }
+.player-picker { position:relative; width:360px; max-width:100%; }
+.player-picker .input { width:100%; }
+.suggestions { display:none; position:absolute; left:0; right:0; top:calc(100% + 6px); z-index:20; border:1px solid var(--line); border-radius:12px; overflow:hidden; background:#fff; box-shadow:0 10px 24px rgba(0,0,0,.14); }
+.suggestions.show { display:block; }
+.suggestion-btn { display:block; width:100%; border:0; border-bottom:1px solid rgba(34,94,34,.08); background:#fff; color:var(--text); padding:10px 12px; text-align:left; font-size:15px; cursor:pointer; }
+.suggestion-btn:hover, .suggestion-btn:focus { background:#e9f7e9; outline:none; }
+.stats { display:grid; gap:12px; margin-bottom:16px; grid-template-columns:repeat(5,minmax(0,1fr)); }
+.card { border:1px solid var(--line); border-radius:18px; padding:16px; background:rgba(255,255,255,.55); }
+.label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.08em; }
+.value { font-size:28px; font-weight:800; margin-top:10px; }
+.tablewrap { overflow:auto; max-height:70vh; border:1px solid var(--line); border-radius:18px; background:rgba(255,255,255,.6); }
+table { width:100%; min-width:1300px; border-collapse:collapse; }
+thead th { position:sticky; top:0; z-index:2; background:#b7ddb7; border-bottom:1px solid var(--line); padding:11px 10px; white-space:nowrap; font-size:13px; }
+tbody th, tbody td { border-bottom:1px solid rgba(255,255,255,.45); padding:8px 10px; white-space:nowrap; font-size:13px; text-align:center; }
+tbody th { position:sticky; left:0; z-index:1; text-align:left; background:linear-gradient(90deg, rgba(183,221,183,.98), rgba(210,238,210,.9)); cursor:pointer; }
+tbody tr:hover { background:rgba(255,255,255,.35); }
+.namecell { display:flex; align-items:center; gap:10px; }
+.score { min-width:40px; display:inline-block; border-radius:10px; padding:6px 0; font-weight:700; color:#111; background:transparent; }
+.score.under-par { border-radius:999px; background:#ff4fb8; color:#fff; box-shadow:0 0 0 3px rgba(255,79,184,.22); }
+.blank { color:#6b7280; background:transparent; font-weight:500; }
+.s1, .s2, .s3, .s4, .s5, .s6plus { background:transparent; color:#111; }
+.event-badge { min-width:34px; display:inline-block; border-radius:999px; padding:5px 9px; font-weight:900; line-height:1; border:1px solid transparent; }
+.event-zero { color:#6b7280; font-weight:600; }
+.event-badge.birdies { color:#0f5132; background:#c9f2d8; border-color:#9ddfba; }
+.event-badge.eagles { color:#5f370e; background:#ffe2a6; border-color:#f3bf57; }
+.event-badge.chip-ins { color:#5b21b6; background:#e9ddff; border-color:#c7b2ff; }
+.event-badge.sand-saves { color:#075985; background:#d8efff; border-color:#9bd3f5; }
+.card.event-card { background:rgba(255,255,255,.78); border-width:2px; }
+.card.event-card .value { font-size:32px; }
+.card.event-card.birdies { border-color:#9ddfba; }
+.card.event-card.eagles { border-color:#f3bf57; }
+.card.event-card.chip-ins { border-color:#c7b2ff; }
+.card.event-card.sand-saves { border-color:#9bd3f5; }
+.eventhit { color:#7c3aed; font-weight:900; }
+.scorecard-wrap { overflow:auto; border:1px solid var(--line); border-radius:18px; background:rgba(255,255,255,.6); }
+.scorecard { width:100%; border-collapse:collapse; min-width:1320px; }
+.scorecard th, .scorecard td { border-bottom:1px solid rgba(255,255,255,.45); padding:8px 10px; text-align:center; white-space:nowrap; }
+.scorecard thead th { position:sticky; top:0; background:#b7ddb7; z-index:1; }
+.scorecard th.corner, .scorecard th.rowlabel { position:sticky; left:0; background:linear-gradient(90deg, rgba(183,221,183,.98), rgba(210,238,210,.9)); text-align:left; z-index:2; }
+.scorecard td.totalcol, .scorecard th.totalhead { font-weight:800; background:rgba(183,221,183,.34); }
+.scorecard td.holeheader { background:rgba(183,221,183,.22); font-weight:700; }
+.mobile-scorecard { display:none; }
+.hole-card { border:1px solid var(--line); border-radius:12px; background:rgba(255,255,255,.72); padding:12px; }
+.hole-card-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+.hole-title { font-weight:900; font-size:16px; }
+.hole-par { color:var(--muted); font-size:13px; font-weight:700; }
+.hole-grid { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; }
+.hole-stat { min-height:58px; border:1px solid rgba(34,94,34,.1); border-radius:10px; background:rgba(255,255,255,.58); padding:8px 6px; text-align:center; }
+.hole-stat .label { font-size:10px; letter-spacing:.04em; }
+.hole-stat .score, .hole-stat .event-badge, .hole-stat .event-zero { margin-top:7px; }
+.grid { display:grid; grid-template-columns:1.1fr .9fr; gap:14px; margin-top:14px; }
+.block { border:1px solid var(--line); border-radius:18px; padding:16px; background:rgba(255,255,255,.55); }
+.block h2 { margin:0; font-size:18px; }
+.blockhead { display:flex; justify-content:space-between; gap:12px; align-items:center; margin-bottom:12px; }
+.mini { color:var(--muted); font-size:13px; }
+.foot { color:var(--muted); font-size:12px; margin-top:14px; line-height:1.5; }
+@media (max-width:1200px) { .hero { flex-direction:column; } .grid { grid-template-columns:1fr; } .stats { grid-template-columns:1fr 1fr; } }
+@media (max-width:720px) {
+  .wrap { padding:14px; }
+  .stats, .grid { grid-template-columns:1fr; }
+  .input,select,.player-picker { min-width:100%; width:100%; }
+  .scorecard-wrap { overflow:visible; border:0; background:transparent; }
+  .scorecard { display:none; }
+  .mobile-scorecard { display:grid; gap:10px; }
+  .hole-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero">
+    <div class="title">
+      <span class="pill" id="datePill">Date Updated: -</span>
+      <h1>MWGC Ringerboard 2026</h1>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tabbtn" data-tab="boardTab">Full Ringer Board</button>
+    <button class="tabbtn active" data-tab="profileTab">Player Profile</button>
+  </div>
+
+  <section id="boardTab" class="panel">
+    <div class="controls">
+      <div class="left">
+        <input class="input" id="boardSearch" placeholder="Search players..." />
+        <select id="boardSort">
+          <option value="ringer_asc">Sort: Ringer total (low to high)</option>
+          <option value="ringer_desc">Sort: Ringer total (high to low)</option>
+          <option value="birdies_desc">Sort: Birdies (high to low)</option>
+          <option value="eagles_desc">Sort: Eagles (high to low)</option>
+          <option value="chip_ins_desc">Sort: Chip-ins (high to low)</option>
+          <option value="sand_saves_desc">Sort: Sand saves (high to low)</option>
+          <option value="name_asc" selected>Sort: Player name (A-Z)</option>
+        </select>
+      </div>
+      <div class="right mini" id="boardSubtitle"></div>
+    </div>
+    <div class="tablewrap"><table id="boardTable"></table></div>
+  </section>
+
+  <section id="profileTab" class="panel active">
+    <div class="controls">
+      <div class="left" style="flex-direction:column; align-items:flex-start; gap:6px;">
+        <div class="player-picker">
+          <input class="input" id="playerSearch" placeholder="Start typing a player name..." autocomplete="off" />
+          <div class="suggestions" id="playerSuggestions"></div>
+        </div>
+        <div class="mini" id="playerHint">Start typing a player name to view their scorecard.</div>
+      </div>
+    </div>
+    <div class="stats" id="profileKpis"></div>
+    <div class="block">
+      <div class="blockhead">
+        <h2>Player Scorecard</h2>
+        <div class="mini" id="profileSubtitle"></div>
+      </div>
+      <div class="scorecard-wrap" id="profileScorecard"></div>
+    </div>
+  </section>
+
+  <div class="foot" id="footer"></div>
+  <details class="admin-update">
+    <summary>Update data</summary>
+    <div class="upload">
+      <label>Refresh by uploading new data (.json or .xlsx)</label>
+      <input id="masterFile" type="file" accept=".json,.xlsx,application/json" />
+      <div class="mini" style="margin-top:10px;">Primary source: <strong>data.json</strong>. Upload a JSON file to preview it here, then replace <strong>data.json</strong> in GitHub to update the public dashboard.</div>
+    </div>
+  </details>
+</div>
+<script>
+const DEFAULT_PARS = [4,3,4,4,3,4,5,"5/4",4,4,5,4,4,4,4,3,4,3];
+let state = { meta: { last_updated: '-', board_sheet: '2026 Ringer Board', profile_sheet: 'Hole_Stats', dashboard_file: 'data.json', source_master_file: 'data.json', profile_default_player: '' }, players: [], playerProfiles: {}, selected_player: '' };
+let currentPlayer = '';
+
+const esc = v => String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+const fmt = v => (v === null || v === undefined || v === '') ? '-' : v;
+const num = v => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+const scoreClass = s => { if (s === null || s === undefined || s === '') return 'blank'; const n = Number(s); if (!Number.isFinite(n)) return 'blank'; if (n <= 1) return 's1'; if (n === 2) return 's2'; if (n === 3) return 's3'; if (n === 4) return 's4'; if (n === 5) return 's5'; return 's6plus'; };
+const parForHole = hole => hole === 8 ? 5 : Number(DEFAULT_PARS[hole - 1]);
+const isUnderPar = (score, hole) => score !== null && score !== undefined && score !== '' && score !== '-' && Number.isFinite(Number(score)) && Number(score) < parForHole(hole);
+const eventType = label => String(label || '').toLowerCase().replace(/\s+/g, '-');
+const eventBadge = (value, type) => num(value) > 0 ? `<span class="event-badge ${eventType(type)}">${esc(fmt(value))}</span>` : `<span class="event-zero">${esc(fmt(value))}</span>`;
+const renderProfileCell = (rowLabel, value) => rowLabel !== 'Ringer Board' ? eventBadge(value, rowLabel) : esc(fmt(value));
+function renderMobileScorecard(profile) {
+  const pars = profile.par_by_hole || DEFAULT_PARS;
+  const holeNums = profile.hole_numbers || Array.from({length:18}, (_, i) => i + 1);
+  const rows = profile.scorecard_rows || [];
+  const byLabel = Object.fromEntries(rows.map(row => [row.label, row]));
+  return `<div class="mobile-scorecard">${holeNums.map((hole, i) => {
+    const ringer = byLabel['Ringer Board']?.values?.[i];
+    const eagles = byLabel['Eagles']?.values?.[i];
+    const birdies = byLabel['Birdies']?.values?.[i];
+    const chipIns = byLabel['Chip-ins']?.values?.[i];
+    const sandSaves = byLabel['Sand Saves']?.values?.[i];
+    return `<div class="hole-card">
+      <div class="hole-card-head"><div class="hole-title">Hole ${esc(hole)}</div><div class="hole-par">Par ${esc(fmt(pars[i]))}</div></div>
+      <div class="hole-grid">
+        <div class="hole-stat"><div class="label">Ringer</div><span class="score ${scoreClass(ringer)}">${esc(fmt(ringer))}</span></div>
+        <div class="hole-stat"><div class="label">Eagles</div>${eventBadge(eagles, 'Eagles')}</div>
+        <div class="hole-stat"><div class="label">Birdies</div>${eventBadge(birdies, 'Birdies')}</div>
+        <div class="hole-stat"><div class="label">Chip-Ins</div>${eventBadge(chipIns, 'Chip-ins')}</div>
+        <div class="hole-stat"><div class="label">Sand Saves</div>${eventBadge(sandSaves, 'Sand Saves')}</div>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function normalizeData(raw) {
+  const players = Array.isArray(raw.players) ? raw.players : (raw.ringerBoard && Array.isArray(raw.ringerBoard.players) ? raw.ringerBoard.players : []);
+  const profiles = raw.playerProfiles || raw.playerProfile || {};
+  const meta = raw.meta || {};
+  const selected = String(raw.selected_player || '');
+  return {
+    meta: {
+      source_master_file: meta.source_master_file || raw.meta?.source_master_file || 'data.json',
+      dashboard_file: meta.dashboard_file || raw.meta?.dashboard_file || 'data.json',
+      last_updated: meta.last_updated || '-',
+      board_sheet: meta.board_sheet || '2026 Ringer Board',
+      profile_sheet: meta.profile_sheet || 'Hole_Stats',
+      profile_default_player: '',
+      player_count: meta.player_count || players.length,
+      best_total: meta.best_total || 0,
+      average_total: meta.average_total || 0,
+    },
+    players,
+    playerProfiles: profiles,
+    selected_player: selected,
+  };
+}
+
+function setTab(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tabbtn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelector(`.tabbtn[data-tab="${id}"]`).classList.add('active');
+}
+
+function renderPills() { document.getElementById('datePill').textContent = `Date Updated: ${state.meta.last_updated || '-'}`; }
+
+function renderBoard() {
+  const q = document.getElementById('boardSearch').value.trim().toLowerCase();
+  const sort = document.getElementById('boardSort').value || 'name_asc';
+  let rows = (state.players || []).filter(p => !q || (p.player_name || '').toLowerCase().includes(q));
+  const highToLow = key => [...rows].sort((a,b) => (num(b[key]) - num(a[key])) || a.player_name.localeCompare(b.player_name));
+  rows =
+    sort === 'ringer_desc' ? highToLow('ringer_total') :
+    sort === 'birdies_desc' ? highToLow('birdies_total') :
+    sort === 'eagles_desc' ? highToLow('eagles_total') :
+    sort === 'chip_ins_desc' ? highToLow('chip_ins_total') :
+    sort === 'sand_saves_desc' ? highToLow('sand_saves_total') :
+    sort === 'name_asc' ? [...rows].sort((a,b) => a.player_name.localeCompare(b.player_name)) :
+    [...rows].sort((a,b) => (num(a.ringer_total) - num(b.ringer_total)) || a.player_name.localeCompare(b.player_name));
+  const cols = ['Player Name', ...Array.from({length:18}, (_,i) => `Hole ${i+1}`), 'Ringer Total', 'Birdies', 'Eagles', 'Chip Ins', 'Sand Saves'];
+  let html = '<thead><tr>' + cols.map(c => `<th>${esc(c)}</th>`).join('') + '</tr></thead><tbody>';
+  if (!rows.length) {
+    html += `<tr><td colspan="24" style="padding:18px;text-align:center;color:var(--muted);">Upload a JSON/workbook file here or replace <strong>data.json</strong> in GitHub to load player scores from the <strong>2026 Ringer Board</strong> tab.</td></tr>`;
+  } else {
+    for (const p of rows) {
+      html += `<tr><th data-player="${esc(p.player_name)}"><div class="namecell"><span>${esc(p.player_name)}</span></div></th>`;
+      for (const h of (p.holes || [])) html += `<td><span class="score ${scoreClass(h.score)} ${isUnderPar(h.score, h.hole) ? 'under-par' : ''}">${esc(fmt(h.score))}</span></td>`;
+      html += `<td><strong>${esc(fmt(p.ringer_total))}</strong></td><td>${eventBadge(p.birdies_total, 'Birdies')}</td><td>${eventBadge(p.eagles_total, 'Eagles')}</td><td>${eventBadge(p.chip_ins_total, 'Chip-ins')}</td><td>${eventBadge(p.sand_saves_total, 'Sand Saves')}</td></tr>`;
+    }
+  }
+  html += '</tbody>';
+  document.getElementById('boardTable').innerHTML = html;
+  document.getElementById('boardSubtitle').textContent = `Source sheet: ${state.meta.board_sheet || '2026 Ringer Board'}`;
+  document.querySelectorAll('#boardTable th[data-player]').forEach(th => th.addEventListener('click', () => selectPlayer(th.dataset.player)));
+}
+
+function buildBlankProfile() {
+  return {
+    player_name: '',
+    note: 'Type a player name to view their scorecard.',
+    summary: { ringer_total: 0, eagles_total: 0, birdies_total: 0, chip_ins_total: 0, sand_saves_total: 0 },
+    par_by_hole: DEFAULT_PARS.slice(),
+    total_par: 71,
+    hole_numbers: Array.from({length:18}, (_, i) => i + 1),
+    scorecard_rows: [
+      { label: 'Ringer Board', values: Array(18).fill(null), total: 0 },
+      { label: 'Eagles', values: Array(18).fill(0), total: 0 },
+      { label: 'Birdies', values: Array(18).fill(0), total: 0 },
+      { label: 'Chip-ins', values: Array(18).fill(0), total: 0 },
+      { label: 'Sand Saves', values: Array(18).fill(0), total: 0 },
+    ],
+  };
+}
+
+function selectPlayer(name) {
+  if (!name) return;
+  currentPlayer = name;
+  document.getElementById('playerSearch').value = name;
+  hidePlayerSuggestions();
+  renderProfile();
+}
+
+function clearPlayer() {
+  currentPlayer = '';
+  document.getElementById('playerSearch').value = '';
+  hidePlayerSuggestions();
+  renderProfile();
+}
+
+function renderSelectors() {
+  document.getElementById('playerSearch').value = currentPlayer || '';
+  hidePlayerSuggestions();
+}
+
+function playerNames() {
+  return (state.players || []).map(p => p.player_name).filter(Boolean);
+}
+
+function hidePlayerSuggestions() {
+  const box = document.getElementById('playerSuggestions');
+  box.classList.remove('show');
+  box.innerHTML = '';
+}
+
+function renderPlayerSuggestions(query) {
+  const box = document.getElementById('playerSuggestions');
+  const q = query.trim().toLowerCase();
+  if (!q) {
+    hidePlayerSuggestions();
+    return;
+  }
+  const matches = playerNames()
+    .filter(name => name.toLowerCase().includes(q))
+    .slice(0, 8);
+  if (!matches.length) {
+    box.innerHTML = '<button class="suggestion-btn" type="button" disabled>No matching players</button>';
+    box.classList.add('show');
+    return;
+  }
+  box.innerHTML = matches.map(name => `<button class="suggestion-btn" type="button" data-player="${esc(name)}">${esc(name)}</button>`).join('');
+  box.classList.add('show');
+  box.querySelectorAll('[data-player]').forEach(btn => btn.addEventListener('mousedown', e => {
+    e.preventDefault();
+    selectPlayer(btn.dataset.player);
+  }));
+}
+
+function renderProfile() {
+  const renderRow = (row) => `${(row.values || []).map(v => `<td>${renderProfileCell(row.label, v)}</td>`).join('')}<td class="totalcol">${esc(fmt(row.total))}</td>`;
+
+  if (!currentPlayer) {
+    const blank = buildBlankProfile();
+    document.getElementById('profileSubtitle').textContent = '';
+    document.getElementById('playerHint').textContent = 'Type a player name to view their scorecard.';
+    document.getElementById('profileKpis').innerHTML = '<div class="card"><div class="label">Ringer Score</div><div class="value">-</div></div><div class="card"><div class="label">Eagles</div><div class="value">-</div></div><div class="card"><div class="label">Birdies</div><div class="value">-</div></div><div class="card"><div class="label">Chip-Ins</div><div class="value">-</div></div><div class="card"><div class="label">Sand Saves</div><div class="value">-</div></div>';
+    const pars = blank.par_by_hole || DEFAULT_PARS;
+    const holeNums = blank.hole_numbers || Array.from({length:18}, (_, i) => i + 1);
+    let table = '<table class="scorecard"><thead><tr><th class="corner">Hole</th>';
+    table += holeNums.map(n => `<th>${n}</th>`).join('') + '<th class="totalhead">Total</th></tr></thead><tbody>';
+    table += `<tr><th class="rowlabel">Par</th>${pars.map(v => `<td class="holeheader">${esc(fmt(v))}</td>`).join('')}<td class="totalcol">${esc(fmt(blank.total_par || 71))}</td></tr>`;
+    for (const row of blank.scorecard_rows || []) {
+      table += `<tr><th class="rowlabel">${esc(row.label)}</th>${(row.values || []).map(v => `<td>${renderProfileCell(row.label, v)}</td>`).join('')}<td class="totalcol">${esc(fmt(row.total))}</td></tr>`;
+    }
+    table += '</tbody></table>' + renderMobileScorecard(blank);
+    document.getElementById('profileScorecard').innerHTML = table;
+    return;
+  }
+  const profile = state.playerProfiles?.[currentPlayer] || buildBlankProfile();
+  const summary = profile.summary || { ringer_total: 0, eagles_total: 0, birdies_total: 0, chip_ins_total: 0, sand_saves_total: 0 };
+  document.getElementById('profileSubtitle').textContent = '';
+  document.getElementById('playerHint').textContent = profile.note || 'Type a player name to view their scorecard.';
+  const stats = [
+    ['Ringer Score', summary.ringer_total, ''],
+    ['Eagles', summary.eagles_total, 'eagles'],
+    ['Birdies', summary.birdies_total, 'birdies'],
+    ['Chip-Ins', summary.chip_ins_total, 'chip-ins'],
+    ['Sand Saves', summary.sand_saves_total, 'sand-saves'],
+  ];
+  document.getElementById('profileKpis').innerHTML = stats.map(([l, v, type]) => `<div class="card ${type ? `event-card ${type}` : ''}"><div class="label">${esc(l)}</div><div class="value">${esc(fmt(v))}</div></div>`).join('');
+  const pars = profile.par_by_hole || DEFAULT_PARS;
+  const holeNums = profile.hole_numbers || Array.from({length:18}, (_, i) => i + 1);
+  const rows = profile.scorecard_rows || [];
+  let table = '<table class="scorecard"><thead><tr><th class="corner">Hole</th>';
+  table += holeNums.map(n => `<th>${n}</th>`).join('') + '<th class="totalhead">Total</th></tr></thead><tbody>';
+  table += `<tr><th class="rowlabel">Par</th>${pars.map(v => `<td class="holeheader">${esc(fmt(v))}</td>`).join('')}<td class="totalcol">${esc(fmt(profile.total_par || 71))}</td></tr>`;
+  for (const row of rows) {
+    table += `<tr><th class="rowlabel">${esc(row.label)}</th>${(row.values || []).map(v => `<td>${renderProfileCell(row.label, v)}</td>`).join('')}<td class="totalcol">${esc(fmt(row.total))}</td></tr>`;
+  }
+  table += '</tbody></table>' + renderMobileScorecard(profile);
+  document.getElementById('profileScorecard').innerHTML = table;
+}
+function renderAll() {
+  renderPills();
+  renderSelectors();
+  renderBoard();
+  renderProfile();
+  document.getElementById('footer').textContent = `Loaded ${state.meta.dashboard_file || 'data.json'}. Replace data.json in GitHub when the data changes.`;
+}
+
+function toIsoDate(value) {
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const dt = new Date(Date.UTC(1899, 11, 30) + value * 86400000);
+    return dt.toISOString().slice(0, 10);
+  }
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  return '-';
+}
+
+function parseWorkbook(arrayBuffer, fileName) {
+  const wb = XLSX.read(arrayBuffer, { type: 'array', cellDates: true });
+  const boardSheet = wb.Sheets['2026 Ringer Board'] || wb.Sheets[(wb.SheetNames || []).find(n => /2026 ringer board/i.test(n))];
+  const statsSheet = wb.Sheets['Hole_Stats'] || wb.Sheets[(wb.SheetNames || []).find(n => /hole_stats/i.test(n))];
+  if (!boardSheet) throw new Error('Could not find the "2026 Ringer Board" tab.');
+  if (!statsSheet) throw new Error('Could not find the "Hole_Stats" tab.');
+
+  const boardRows = XLSX.utils.sheet_to_json(boardSheet, { defval: null, raw: true });
+  const boardHeaderRows = XLSX.utils.sheet_to_json(boardSheet, { header: 1, defval: null, raw: true });
+  const boardHeader = boardHeaderRows[0] || [];
+  const lastUpdated = toIsoDate(boardHeader[28] || boardHeader[26]);
+
+  const profileDefault = '';
+
+  const statsByPlayer = Object.create(null);
+  for (const row of XLSX.utils.sheet_to_json(statsSheet, { defval: null, raw: true })) {
+    const include = String(row['Include'] || '').trim().toUpperCase();
+    if (include && include !== 'YES') continue;
+
+    const name = String(row['Player Name'] || '').trim();
+    const hole = Number(row['Hole']);
+    if (!name || !(hole >= 1 && hole <= 18)) continue;
+
+    if (!statsByPlayer[name]) {
+      statsByPlayer[name] = {
+        gc_id: String(row['GC Card Id'] || '').trim(),
+        first_name: String(row['First Name'] || '').trim(),
+        last_name: String(row['Last Name'] || '').trim(),
+        weeks: new Set(),
+        holes: Array.from({ length: 19 }, (_, i) => i ? { hole: i, scores: [], birdie: 0, eagle: 0, chip_in: 0, sand_save: 0 } : null),
+      };
+    }
+
+    const s = statsByPlayer[name];
+    const wk = row['Week'];
+    if (wk !== null && wk !== undefined && wk !== '') s.weeks.add(toIsoDate(wk));
+    const cell = s.holes[hole];
+    const score = row['Score'];
+    if (score !== null && score !== undefined && score !== '') cell.scores.push(Number(score));
+    cell.birdie += num(row['Birdie']);
+    cell.eagle += num(row['Eagle']);
+    cell.chip_in += num(row['Chip-in']);
+    cell.sand_save += num(row['Sand Save']);
+  }
+
+  const parsedPlayers = [];
+  for (const row of boardRows) {
+    const name = String(row['Player Name'] || row['PLAYER NAME'] || row['Player name'] || '').trim();
+    if (!name) continue;
+    const stats = statsByPlayer[name];
+    const holes = Array.from({ length: 18 }, (_, i) => {
+      const raw = row[`Hole ${i + 1}`];
+      const score = raw === null || raw === undefined || raw === '' ? null : Number(raw);
+      const fallback = stats && stats.holes[i + 1] && stats.holes[i + 1].scores.length ? Math.min(...stats.holes[i + 1].scores) : null;
+      const finalScore = Number.isFinite(score) ? score : (Number.isFinite(fallback) ? fallback : null);
+      return { hole: i + 1, score: finalScore, birdie: 0, eagle: 0, chip_in: 0, sand_save: 0 };
+    });
+
+    const eventTotals = stats ? {
+      birdies_total: Array.from({ length: 18 }, (_, i) => stats.holes[i + 1].birdie).reduce((a, b) => a + b, 0),
+      eagles_total: Array.from({ length: 18 }, (_, i) => stats.holes[i + 1].eagle).reduce((a, b) => a + b, 0),
+      chip_ins_total: Array.from({ length: 18 }, (_, i) => stats.holes[i + 1].chip_in).reduce((a, b) => a + b, 0),
+      sand_saves_total: Array.from({ length: 18 }, (_, i) => stats.holes[i + 1].sand_save).reduce((a, b) => a + b, 0),
+      weeks_count: stats.weeks.size,
+    } : {
+      birdies_total: num(row['Birdies Total']),
+      eagles_total: num(row['Eagles Total']),
+      chip_ins_total: num(row['Chip Ins']),
+      sand_saves_total: num(row['Sand Saves']),
+      weeks_count: 0,
+    };
+
+    parsedPlayers.push({
+      gc_id: stats ? stats.gc_id : '',
+      first_name: stats ? stats.first_name : (name.split(/\s+/)[0] || ''),
+      last_name: stats ? stats.last_name : (name.split(/\s+/).slice(1).join(' ') || ''),
+      player_name: name,
+      holes,
+      ringer_total: holes.reduce((a, h) => a + (h.score || 0), 0),
+      birdies_total: eventTotals.birdies_total,
+      eagles_total: eventTotals.eagles_total,
+      chip_ins_total: eventTotals.chip_ins_total,
+      sand_saves_total: eventTotals.sand_saves_total,
+      holes_scored: holes.filter(h => h.score !== null).length,
+      weeks_count: eventTotals.weeks_count || 1,
+    });
+  }
+
+  const playerProfiles = {};
+  for (const p of parsedPlayers) {
+    const s = statsByPlayer[p.player_name];
+    const ringerValues = p.holes.map(h => h.score);
+    const birdies = s ? s.holes.slice(1).map(h => h.birdie) : Array(18).fill(0);
+    const eagles = s ? s.holes.slice(1).map(h => h.eagle) : Array(18).fill(0);
+    const chipIns = s ? s.holes.slice(1).map(h => h.chip_in) : Array(18).fill(0);
+    const sandSaves = s ? s.holes.slice(1).map(h => h.sand_save) : Array(18).fill(0);
+    const holeNums = Array.from({ length: 18 }, (_, i) => i + 1);
+    playerProfiles[p.player_name] = {
+      player_name: p.player_name,
+      default_player: p.player_name === profileDefault,
+      note: 'Type a player name to view their scorecard.',
+      summary: {
+        ringer_total: p.ringer_total,
+        eagles_total: p.eagles_total,
+        birdies_total: p.birdies_total,
+        chip_ins_total: p.chip_ins_total,
+        sand_saves_total: p.sand_saves_total,
+      },
+      par_by_hole: DEFAULT_PARS.slice(),
+      total_par: 71,
+      hole_numbers: holeNums,
+      scorecard_rows: [
+        { label: 'Ringer Board', values: ringerValues, total: p.ringer_total },
+        { label: 'Eagles', values: eagles, total: eagles.reduce((a, b) => a + b, 0) },
+        { label: 'Birdies', values: birdies, total: birdies.reduce((a, b) => a + b, 0) },
+        { label: 'Chip-ins', values: chipIns, total: chipIns.reduce((a, b) => a + b, 0) },
+        { label: 'Sand Saves', values: sandSaves, total: sandSaves.reduce((a, b) => a + b, 0) },
+      ],
+      holes_scored: p.holes_scored,
+      weeks_count: s ? s.weeks.size : 0,
+      gc_id: p.gc_id,
+      first_name: p.first_name,
+      last_name: p.last_name,
+    };
+  }
+
+  const totals = parsedPlayers.map(p => p.ringer_total).filter(v => typeof v === 'number');
+  return {
+    meta: {
+      source_master_file: fileName,
+      dashboard_file: fileName,
+      last_updated: lastUpdated,
+      board_sheet: '2026 Ringer Board',
+      profile_sheet: 'Hole_Stats',
+      profile_default_player: '',
+      player_count: parsedPlayers.length,
+      best_total: totals.length ? Math.max(...totals) : 0,
+      average_total: totals.length ? Number((totals.reduce((a, b) => a + b, 0) / totals.length).toFixed(1)) : 0,
+    },
+    players: parsedPlayers,
+    playerProfiles,
+    selected_player: '',
+    ringerBoard: {
+      sheet_name: '2026 Ringer Board',
+      par_by_hole: DEFAULT_PARS.slice(),
+      total_par: 71,
+      last_updated: lastUpdated,
+      player_count: parsedPlayers.length,
+      players: parsedPlayers,
+    },
+  };
+}
+async function loadJsonData() {
+  try {
+    const res = await fetch('./data.json', { cache: 'no-store' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    state = normalizeData(await res.json());
+    currentPlayer = '';
+    renderAll();
+  } catch (err) {
+    console.warn('Could not load data.json:', err);
+    state = normalizeData({ meta: {}, players: [], playerProfiles: {}, selected_player: '' });
+    currentPlayer = '';
+    renderAll();
+    document.getElementById('footer').textContent = 'No data.json found yet. Upload a JSON or workbook file to load the latest scores.';
+  }
+}
+
+document.querySelectorAll('.tabbtn').forEach(btn => btn.addEventListener('click', () => setTab(btn.dataset.tab)));
+document.getElementById('boardSort').addEventListener('change', renderBoard);
+document.getElementById('boardSearch').addEventListener('input', renderBoard);
+document.getElementById('playerSearch').addEventListener('change', e => e.target.value ? selectPlayer(e.target.value) : clearPlayer());
+document.getElementById('playerSearch').addEventListener('input', e => {
+  const exact = playerNames().find(name => name.toLowerCase() === e.target.value.trim().toLowerCase());
+  if (exact) {
+    selectPlayer(exact);
+  } else if (e.target.value.trim()) {
+    renderPlayerSuggestions(e.target.value);
+  } else {
+    clearPlayer();
+  }
+});
+document.getElementById('playerSearch').addEventListener('focus', e => renderPlayerSuggestions(e.target.value));
+document.getElementById('playerSearch').addEventListener('blur', () => setTimeout(hidePlayerSuggestions, 120));
+async function loadUploadedFile(file) {
+  const isJson = file.name.toLowerCase().endsWith('.json') || file.type === 'application/json';
+  if (isJson) {
+    const raw = JSON.parse(await file.text());
+    const data = normalizeData(raw);
+    data.meta.dashboard_file = file.name;
+    return data;
+  }
+
+  if (file.name.toLowerCase().endsWith('.xlsx')) {
+    const buffer = await file.arrayBuffer();
+    return normalizeData(parseWorkbook(buffer, file.name));
+  }
+
+  throw new Error('Please upload a .json or .xlsx file.');
+}
+
+document.getElementById('masterFile').addEventListener('change', async e => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  try {
+    state = await loadUploadedFile(file);
+    currentPlayer = '';
+    renderAll();
+    document.getElementById('footer').textContent = `Loaded ${file.name}. To update the public dashboard, replace data.json in GitHub with the new JSON file.`;
+  } catch (err) {
+    alert(err.message || String(err));
+  }
+});
+
+loadJsonData();
+</script>
+</body>
+</html>
+
